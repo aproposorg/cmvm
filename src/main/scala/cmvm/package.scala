@@ -1,5 +1,6 @@
 import scala.math.{abs, log10, min, pow, sqrt}
 import scala.collection.mutable
+import scala.collection.parallel.CollectionConverters._
 
 import chisel3.getVerilogString
 import chisel3.util.isPow2
@@ -38,8 +39,8 @@ package object cmvm {
   private[cmvm] def dec2String (dec: Array[Array[Array[Array[Double]]]]): String = dec.map(slc2String(_)).mkString("[", "\n", "]")
 
   /** Helpful vector operations
-    * @param v a vector
-    */
+   * @param v a vector
+   */
   private[cmvm]implicit class VectorOps(v: Array[Double]) {
     def +(that: Array[Double]): Array[Double] = {
       require(this.v.length == that.length)
@@ -55,88 +56,88 @@ package object cmvm {
   }
 
   /** Compute the base-2 logarithm of number
-    * @param v the number
-    * @return `log2(v)`
-    */
+   * @param v the number
+   * @return `log2(v)`
+   */
   private[cmvm] def log2(v: Double): Double = log10(v)/log10(2.0)
 
   /** Convert a number to Decibel
-    * @param v the number
-    * @return `10 * log10(v)`
-    */
+   * @param v the number
+   * @return `10 * log10(v)`
+   */
   private[cmvm] def todB(v: Double): Double = 10 * log10(v)
 
   /** Compute the 0-norm of a vector
-    * @param vs the vector
-    * @return the 0-norm (`sum[i](vs[i] != 0)`) of `vs`
-    */
+   * @param vs the vector
+   * @return the 0-norm (`sum[i](vs[i] != 0)`) of `vs`
+   */
   private[cmvm] def norm0(vs: Array[Double]): Double = vs.count(_ != 0.0)
 
   /** Compute the 2-norm of a vector
-    * @param vs the vector
-    * @return the 2-norm (`sqrt(sum[i](vs(i) ^ 2.0))`) of `vs`
-    */
+   * @param vs the vector
+   * @return the 2-norm (`sqrt(sum[i](vs(i) ^ 2.0))`) of `vs`
+   */
   private[cmvm] def norm2(vs: Array[Double]): Double = sqrt(vs.map(pow(_, 2.0)).sum)
 
   /** Compute the Frobenius norm of a matrix
-    * @param ms the matrix
-    * @return the Frobenius norm (`sqrt(sum[i](sum[j](ms[i,j] ^ 2.0)))`) of `ms`
-    */
+   * @param ms the matrix
+   * @return the Frobenius norm (`sqrt(sum[i](sum[j](ms[i,j] ^ 2.0)))`) of `ms`
+   */
   private[cmvm] def normF(ms: Array[Array[Double]]): Double = sqrt(ms.flatMap(_.map(pow(_, 2.0))).sum)
 
   /** Generate an all-zero vector
-    * @param cols the length of the vector
-    * @return a vector of `cols` zeros
-    */
+   * @param cols the length of the vector
+   * @return a vector of `cols` zeros
+   */
   private[cmvm] def zeros(cols: Int): Array[Double] = Array.fill(cols)(0.0)
 
   /** Generate an all-zero matrix
-    * @param rows the number of rows
-    * @param cols the number of cols
-    * @return a matrix of `[rows x cols]` zeros
-    */
+   * @param rows the number of rows
+   * @param cols the number of cols
+   * @return a matrix of `[rows x cols]` zeros
+   */
   private[cmvm] def zeros(rows: Int, cols: Int): Array[Array[Double]] = Array.fill(rows)(zeros(cols))
 
   /** Generate an identity matrix
-    * @param num the number of rows and columns
-    * @return an identity matrix of size `[num x num]`
-    */
+   * @param num the number of rows and columns
+   * @return an identity matrix of size `[num x num]`
+   */
   private[cmvm] def identity(num: Int): Array[Array[Double]] = {
     (0 until num).map(i => zeros(i) :+ 1.0 :++ zeros(num-i-1)).toArray
   }
 
   /** Evaluate if two vectors are element-wise equal
-    * @param v1 the first vector
-    * @param v2 the second vector
-    * @return true iff the vectors are equal
-    * 
-    * @note Returns false if `v1` and `v2` have different lengths.
-    */
+   * @param v1 the first vector
+   * @param v2 the second vector
+   * @return true iff the vectors are equal
+   * 
+   * @note Returns false if `v1` and `v2` have different lengths.
+   */
   private[cmvm] def equal(v1: Array[Double], v2: Array[Double]): Boolean = {
     (v1.length == v2.length) && v1.zip(v2).forall { case (a, b) => a == b }
   }
 
   /** Compute the dot product of two vectors
-    * @param v1 the first vector
-    * @param v2 the second vector
-    * @return the dot product (`sum[i](v1[i] * v2[i])`)
-    * 
-    * @note The vectors `v1` and `v2` must have the same length.
-    * @note Returns 0 if the vectors are empty.
-    */
+   * @param v1 the first vector
+   * @param v2 the second vector
+   * @return the dot product (`sum[i](v1[i] * v2[i])`)
+   * 
+   * @note The vectors `v1` and `v2` must have the same length.
+   * @note Returns 0 if the vectors are empty.
+   */
   private[cmvm] def dot(v1: Array[Double], v2: Array[Double]): Double = {
     require(v1.length == v2.length)
     v1.zip(v2).map { case (a, b) => a * b }.sum
   }
 
   /** Compute the dot product of a vector with a matrix
-    * @param v the vector
-    * @param m the matrix
-    * @return the dot product (`dot(v, m[:,0]) & ... & dot(v, m(:,N-1))`)
-    * 
-    * @note The matrix `m` must be rectangular.
-    * @note The vector `v` must have length equal to the number of rows of `m`.
-    */
+   * @param v the vector
+   * @param m the matrix
+   * @return the dot product (`dot(v, m[:,0]) & ... & dot(v, m(:,N-1))`)
+   * 
+   * @note The matrix `m` must be rectangular.
+   * @note The vector `v` must have length equal to the number of rows of `m`.
+   */
   private[cmvm] def dot(v: Array[Double], m: Array[Array[Double]]): Array[Double] = {
     require(!m.isEmpty && v.length == m.length && m.drop(1).forall(_.length == m(0).length))
     (0 until m(0).length).map(col => dot(v, m.map(_(col)).toArray)).toArray
@@ -158,13 +159,13 @@ package object cmvm {
   }
 
   /** Compute the dot product of two matrices
-    * @param m1 the first matrix
-    * @param m2 the second matrix
-    * @return the dot product (`dot(m1[0,:], m2[:,0]) & ... & dot(m1[M-1,:], m2[:,P-1])`)
-    * 
-    * @note The matrices `m1` and `m2` must be rectangular.
-    * @note The rows of matrix `m1` must have length equal to the number of rows of `m2`.
-    */
+   * @param m1 the first matrix
+   * @param m2 the second matrix
+   * @return the dot product (`dot(m1[0,:], m2[:,0]) & ... & dot(m1[M-1,:], m2[:,P-1])`)
+   * 
+   * @note The matrices `m1` and `m2` must be rectangular.
+   * @note The rows of matrix `m1` must have length equal to the number of rows of `m2`.
+   */
   private[cmvm] def dot(m1: Array[Array[Double]], m2: Array[Array[Double]]): Array[Array[Double]] = {
     require(!m1.isEmpty && !m2.isEmpty && m1(0).length == m2.length &&
       m1.drop(1).forall(_.length == m1(0).length) && m2.drop(1).forall(_.length == m2(0).length))
@@ -186,30 +187,30 @@ package object cmvm {
   }
 
   /** Compute the Euclidean distance between two vectors
-    * @param v1 the first vector
-    * @param v2 the second vector
-    * @return the Euclidean distance (`norm2(v1 - v2)`)
-    */
+   * @param v1 the first vector
+   * @param v2 the second vector
+   * @return the Euclidean distance (`norm2(v1 - v2)`)
+   */
   private[cmvm] def euclideanDistance(v1: Array[Double], v2: Array[Double]): Double = norm2(v1 - v2)
 
   /** Compute the signal-to-quantization-noise ratio between two vectors
-    * @param v1 the first vector
-    * @param v2 the second vector
-    * @return the signal-to-quantization-noise ratio (`(norm2(v1) ^ 2.0) / (norm2(v1-v2) ^ 2.0)`)
-    * 
-    * @note The vectors `v1` and `v2` must have the same length.
-    */
+   * @param v1 the first vector
+   * @param v2 the second vector
+   * @return the signal-to-quantization-noise ratio (`(norm2(v1) ^ 2.0) / (norm2(v1-v2) ^ 2.0)`)
+   * 
+   * @note The vectors `v1` and `v2` must have the same length.
+   */
   private[cmvm] def sqnr(v1: Array[Double], v2: Array[Double]): Double = {
     pow(norm2(v1), 2.0) / pow(norm2(v1 - v2), 2.0)
   }
 
   /** Compute the signal-to-quantization-noise ratio between two matrices
-    * @param m1 the first matrix
-    * @param m2 the second matrix
-    * @return the signal-to-quantization-noise ratio (`(normF(m1) ^ 2.0) / (normF(m1-m2) ^ 2.0)`)
-    * 
-    * @note The matrices `m1` and `m2` must have the same size.
-    */
+   * @param m1 the first matrix
+   * @param m2 the second matrix
+   * @return the signal-to-quantization-noise ratio (`(normF(m1) ^ 2.0) / (normF(m1-m2) ^ 2.0)`)
+   * 
+   * @note The matrices `m1` and `m2` must have the same size.
+   */
   private[cmvm] def sqnr(m1: Array[Array[Double]], m2: Array[Array[Double]]): Double = {
     require(!m1.isEmpty && !m2.isEmpty && m1.length == m2.length && m1(0).length == m2(0).length &&
       m1.zip(m2).forall { case (v1, v2) => v1.length == v2.length })
@@ -217,12 +218,12 @@ package object cmvm {
   }
 
   /** Generate a "dictionary" of signed powers-of-two factors used for decomposition
-    * @param width the number of bits used to represent factors
-    * @return a vector of sorted factors
-    * 
-    * @note Requires the width to be at least two bits to represent factors in 
-    *       some combined sign-magnitude and two's complement inspired format.
-    */
+   * @param width the number of bits used to represent factors
+   * @return a vector of sorted factors
+   * 
+   * @note Requires the width to be at least two bits to represent factors in 
+   *       some combined sign-magnitude and two's complement inspired format.
+   */
   private[cmvm] def generateFactors(width: Int): Array[Double] = {
     require(width >= 2, 
       "cannot generate powers of two factors for representation with fewer than two bits")
@@ -232,56 +233,48 @@ package object cmvm {
   }
 
   /** Recursively generate all valid extensions to a given matching by one more 
-    * non-zero element picked for a dictionary of factors
-    * @param phi the matching to extend upon
-    * @param w the vector to match against
-    * @param factors the dictionary of factors
-    * @param codebook the current coding matrix used as basis for the matching
-    * @param e the number of non-zero elements in a matrix factor row
-    * @return a list of valid matchings for `w` with (at most) `E` non-zero elements
-    * 
-    * @note This function should be considered a helper and not called outside 
-    *       the scope of `decomposeSlice`.
-    */
+   * non-zero element picked for a dictionary of factors
+   * @param phi the matching to extend upon
+   * @param w the vector to match against
+   * @param factors the dictionary of factors
+   * @param codebook the current coding matrix used as basis for the matching
+   * @param e the number of non-zero elements in a matrix factor row
+   * @return a list of valid matchings for `w` with (at most) `E` non-zero elements
+   * 
+   * @note This function should be considered a helper and not called outside 
+   *       the scope of `decomposeSlice`.
+   */
   private[cmvm] def generateMatchings(phi: Array[Double], w: Array[Double], factors: Array[Double],
                                       codebook: Array[Array[Double]], e: Int): Array[Array[Double]] = {
-    // We keep a mutable collection of matchings here
-    val matchingSets = mutable.ArrayBuffer.empty[Array[Array[Double]]]
-
-    // For each column in the weight vector, we want to select the set of best 
-    // matchings with the best factors for each vector entry (skip columns whose
-    // result is 0)
-    for (col <- 0 until w.length if w(col) != 0) {
+    // For each non-zero element in the weight vector, we want to select the
+    // set of matchings with the best factors for each vector entry and keep
+    // track of them here
+    val matchingSets = w.par.filter(_ != 0).map { _ =>
       // Iterate over the rows of the codebook (skip rows whose input vector
       // entry is non-zero)
-      val colMatchings = mutable.ArrayBuffer.empty[Array[Double]]
-      for (row <- 0 until codebook.length if phi(row) == 0.0) {
-        // Extract the current row of the original codebook
-        val codeRow = codebook(row)
-        // Precompute the dot product of the input vector and this codebook
-        val precProd = dot(phi, codebook)
-        // Iterate over the factors to find the best one
-        val (_, bestFactor) = factors
-          .foldLeft((Double.PositiveInfinity, Double.NegativeInfinity)) { case ((bDst, bFctr), fctr) =>
-          // Scale the row of the codebook and add it to the precomputed result
-          val est = (codeRow * fctr) + precProd
+      codebook.zipWithIndex
+        .filter { case (_, r) => phi(r) == 0.0 }
+        .map { case (codeRow, r) =>
+          // Precompute the dot product of the input vector and this codebook
+          val precProd = dot(phi, codebook)
 
-          // Compute and compare the Euclidean distance to the weight vector
-          val dst = euclideanDistance(w, est)
-          if (dst < bDst) (dst, fctr) else (bDst, bFctr)
+          // Iterate over the factors to find the best one
+          val (_, bestFactor) = factors
+            .foldLeft((Double.PositiveInfinity, Double.NegativeInfinity)) { case ((bDst, bFctr), fctr) =>
+            // Scale the row of the codebook and add it to the precomputed result
+            val est = (codeRow * fctr) + precProd
+
+            // Compute and compare the Euclidean distance to the weight vector
+            val dst = euclideanDistance(w, est)
+            if (dst < bDst) (dst, fctr) else (bDst, bFctr)
+          }
+
+          // Create a corresponding matching and return it
+          val bestMatching  = phi.clone()
+          bestMatching(r) = bestFactor
+          bestMatching
         }
-        // Create a corresponding matching
-        val bestMatching  = phi.clone()
-        bestMatching(row) = bestFactor
-
-        // Store the best matching (if it is not equal to the input vector)
-        if (!equal(phi, bestMatching)) {
-          colMatchings += bestMatching
-        }
-      }
-
-      // Store the best matchings
-      matchingSets += colMatchings.toArray
+        .filter(!equal(phi, _)) // remove any matchings identical to `phi`
     }
 
     // The intersection of the selected sets contains viable matchings that fit 
@@ -312,15 +305,15 @@ package object cmvm {
   }
 
   /** Decompose a matrix slice using computation coding with a given dictionary 
-    * of valid factors
-    * @param slice the matrix slice
-    * @param factors the dictionary of factors
-    * @param p the number of non-trivial matrix factors
-    * @param e the number of non-zero elements in a matrix factor row
-    * @param minSqnr minimum signal-to-quantization-noise ratio for which to 
-    *                terminate the algorithm early
-    * @return a list `P+1` of matrix factors to make up the slice
-    */
+   * of valid factors
+   * @param slice the matrix slice
+   * @param factors the dictionary of factors
+   * @param p the number of non-trivial matrix factors
+   * @param e the number of non-zero elements in a matrix factor row
+   * @param minSqnr minimum signal-to-quantization-noise ratio for which to 
+   *                terminate the algorithm early
+   * @return a list `P+1` of matrix factors to make up the slice
+   */
   private[cmvm] def decomposeSlice(slice: Array[Array[Double]], factors: Array[Double],
                                    p: Int, e: Int, minSqnr: Int): Array[Array[Array[Double]]] = {
     require(!slice.isEmpty && !slice(0).isEmpty, "cannot decompose an empty slice")
@@ -369,11 +362,11 @@ package object cmvm {
   }
 
   /** Slice a given matrix column-wise
-    * @param target the matrix
-    * @param wSlice the width of the slices
-    * @return a list of matrix slices of width `wSlice`, except the last slice 
-    *         that may be narrower if `target`s width does not divide by `wSlice`
-    */
+   * @param target the matrix
+   * @param wSlice the width of the slices
+   * @return a list of matrix slices of width `wSlice`, except the last slice 
+   *         that may be narrower if `target`s width does not divide by `wSlice`
+   */
   private[cmvm] def slice(target: Array[Array[Double]], wSlice: Int): Array[Array[Array[Double]]] = {
     require(!target.isEmpty && !target(0).isEmpty, "cannot slice empty matrix")
     require(wSlice >= 1, "cannot create matrix slices with width less than one")
@@ -391,13 +384,13 @@ package object cmvm {
   }
 
   /** Simple heuristic to pick a slice width from the number of non-zero factors 
-    * to use in each slice row
-    * @param e the number of non-zero factors in a slice row
-    * @return a heuristically picked slice width
-    * 
-    * @note Currently, we implement a simple heuristic that picks the slice width 
-    *       as the nearest, greater power-of-two to `2*E` or at most 8.
-    */
+   * to use in each slice row
+   * @param e the number of non-zero factors in a slice row
+   * @return a heuristically picked slice width
+   * 
+   * @note Currently, we implement a simple heuristic that picks the slice width 
+   *       as the nearest, greater power-of-two to `2*E` or at most 8.
+   */
   private[cmvm] def computeN(e: Int): Int = {
     def _helper(e: Int, shft: Int = 0): Int = {
       if (e == 0) 1 << shft else _helper(e >> 1, shft+1)
@@ -407,18 +400,19 @@ package object cmvm {
   }
 
   /** Decompose a matrix using computation coding with a given dictionary of 
-    * valid factors
-    * @param target the matrix
-    * @param factors the dictionary of factors (will be generated if empty)
-    * @param p the number of non-trivial matrix factors
-    * @param e the number of non-zero elements in a matrix factor row
-    * @param numBits the number of bits to use in the factor representations
-    * @param minSqnr minimum signal-to-quantization-noise ratio for which to 
-    *                terminate the algorithm early
-    * @return a list of slices with `P+1` matrix factors each
-    */
-  def decompose(target: Array[Array[Double]], factors: Array[Double] = Array.empty[Double], p: Int = 2,
-                e: Int = 2, numBits: Int = 6, minSqnr: Int = 45): Array[Array[Array[Array[Double]]]] = {
+   * valid factors
+   * @param target the matrix
+   * @param factors the dictionary of factors (will be generated if empty)
+   * @param p the number of non-trivial matrix factors
+   * @param e the number of non-zero elements in a matrix factor row
+   * @param numBits the number of bits to use in the factor representations
+   * @param minSqnr minimum signal-to-quantization-noise ratio for which to 
+   *                terminate the algorithm early
+   * @return a list of slices with `P+1` matrix factors each
+   */
+  def decompose(target: Array[Array[Double]], factors: Array[Double] = Array.empty[Double],
+                        p: Int = 2, e: Int = 2, numBits: Int = 6, minSqnr: Int = 45):
+                        Array[Array[Array[Array[Double]]]] = {
     require(!target.isEmpty && !target(0).isEmpty,
       "cannot decompose an empty matrix or a matrix with empty rows")
     require(p >= 0, "cannot generate a negative number of non-trivial matrix factors")
@@ -435,8 +429,8 @@ package object cmvm {
     // Gather the slices and compute their decompositions one by one
     val slices = slice(target, n)
 
-    // Now simply decompose each of the slices and return their results
-    slices.map(decomposeSlice(_, _factors, p, e, minSqnr))
+    // Now decompose each of the slices in parallel and wait to return their results
+    slices.par.map(decomposeSlice(_, _factors, p, e, minSqnr)).toArray
   }
 
   /** Decompose a matrix using computation coding with a given dictionary of

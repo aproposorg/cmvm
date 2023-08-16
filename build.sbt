@@ -11,7 +11,8 @@ lazy val root = (project in file("."))
     name := "CMVM",
     libraryDependencies ++= Seq(
       "edu.berkeley.cs" %% "chisel3" % chiselVersion,
-      "edu.berkeley.cs" %% "chiseltest" % "0.5.4" % "test"
+      "edu.berkeley.cs" %% "chiseltest" % "0.5.4" % "test",
+      "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
     ),
     scalacOptions ++= Seq(
       "-language:reflectiveCalls",
