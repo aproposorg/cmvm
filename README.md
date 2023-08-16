@@ -23,7 +23,7 @@ The tool uses the following terminology:
 - _Matrix factor_ referring to the sub-elements of a slice. (Internally, type `Array[Array[Double]]`)
 - _Factor_ (or _matrix factor element_) referring to the individual elements of a matrix factor. (Internally, type `Array[Array[Double]]`)
 
-Beware that factors are assumed to be represented by a limited number of bits. Unless the factors are passed to the tool manually, it assumes a slightly asymmetric distribution around zero. Moreover, the current algorithm for picking factors for slice rows suffers from exponential runtime in the number of non-zero elements. This means the overall tool runs rather slowly, even for relatively small matrices. We provide automated test flows for matrix sizes up to $256\times256$, which can execute in a few minutes on a laptop.
+Beware that factors are assumed to be represented by a limited number of bits. Unless the factors are passed to the tool manually, it assumes a slightly asymmetric distribution around zero. Moreover, the current algorithm for picking factors for slice rows suffers from exponential runtime in the number of non-zero elements. This means the overall tool runs rather slowly, even for relatively small matrices. We provide automated test flows for matrix sizes up to $32\times32$, which can execute in a few minutes on a laptop.
 
 ***
 # Requirements
