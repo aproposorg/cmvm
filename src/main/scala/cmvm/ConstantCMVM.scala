@@ -11,7 +11,7 @@ import chisel3.util._
  * @param wIns the width of the inputs
  * @param wOuts the width of the outputs
  */
-private class ConstantCMVMIO(nIns: Int, nOuts: Int, wIns: Int, wOuts: Int) extends Bundle {
+class ConstantCMVMIO(nIns: Int, nOuts: Int, wIns: Int, wOuts: Int) extends Bundle {
   val ins  = Input(Vec(nIns, UInt(wIns.W)))
   val outs = Output(Vec(nOuts, UInt(wOuts.W)))
 }
@@ -23,8 +23,8 @@ private class ConstantCMVMIO(nIns: Int, nOuts: Int, wIns: Int, wOuts: Int) exten
  * @param pipe whether to pipeline the outputs
  * @param name the suggested name of this module
  */
-private class ConstantCMVMFactor(mFactor: Array[Array[Double]], wFactor: Int,
-                                 wData: Int, pipe: Boolean, name: String = "") extends Module {
+class ConstantCMVMFactor(mFactor: Array[Array[Double]], wFactor: Int,
+                         wData: Int, pipe: Boolean, name: String = "") extends Module {
   /** For now, we accumulate in the same data width as the inputs. This 
     * should probably be changed or adapted somehow. Not sure what's the 
     * best way if we want to avoid exploding numbers through the design.
@@ -77,9 +77,9 @@ private class ConstantCMVMFactor(mFactor: Array[Array[Double]], wFactor: Int,
  * @param pipe whether to pipeline the outputs
  * @param name the suggested name of this module
  */
-private class ConstantCMVMSlice(slice: Array[Array[Array[Double]]],
-                                wFactor: Int, wData: Int, pipe: Boolean,
-                                name: String = "") extends Module {
+class ConstantCMVMSlice(slice: Array[Array[Array[Double]]],
+                        wFactor: Int, wData: Int, pipe: Boolean,
+                        name: String = "") extends Module {
   // Compute the size of the IO and create it accordingly
   private val trivial = slice.last
   private val nIns  = trivial(0).length // number of columns in the trivial matrix
@@ -111,9 +111,9 @@ private class ConstantCMVMSlice(slice: Array[Array[Array[Double]]],
  * @param pipe whether to pipeline the outputs
  * @param name the suggested name of this module
  */
-private class ConstantCMVM(slices: Array[Array[Array[Array[Double]]]], 
-                           wFactor: Int, wData: Int, pipe: Boolean = false,
-                           name: String = "") extends Module {
+class ConstantCMVM(slices: Array[Array[Array[Array[Double]]]], 
+                   wFactor: Int, wData: Int, pipe: Boolean = false,
+                   name: String = "") extends Module {
   // Perform some sanity checks before generating anything
   require(wFactor > 0, "matrix factor representation must have positive width")
   require(wData > 0, "data representation must have positive width")
